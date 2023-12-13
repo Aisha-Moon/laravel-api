@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CategoryStoreRequest;
+use App\Http\Requests\CategoryUpdateRequest;
+use App\Http\Resources\CategoryResource;
+use App\Http\Resources\ErrorResource;
+use App\Http\Resources\SuccessResource;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -14,14 +19,14 @@ class CategoryController extends Controller
      * Display a listing of the resource.
      */
     public function index()
-    {
-        $categories=Category::latest()->get();
-        return response()->json([
-            'success'=>'true',
-            'message'=>'Category Successfully Retrieved',
-            'data'=>$categories,
-        ]);
-    }
+{
+    $categories = Category::latest()->get();
+    return new SuccessResource([
+        'message' => 'All categories',
+        'data' => CategoryResource::collection($categories),
+    ]);
+}
+
 
     /**
      * Show the form for creating a new resource.
@@ -31,120 +36,58 @@ class CategoryController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        // Validate the request data
-        $data = Validator::make($request->all(), [
-            'name' => 'required|string|unique:categories',
-        ]);
+    public function store(CategoryStoreRequest $request)
+{
+    // The validation has already been performed by CategoryStoreRequest
+    $formData = $request->validated();
+    $formData['slug'] = Str::slug($formData['name']);
 
-        // Check if validation fails
-        if ($data->fails()) {
-            return response()->json([
-                'success'=>false,
-                'message'=>'Error',
-                'errors'=>$data->errors(),
+    // Your logic to save the data to the database or perform other actions
 
-            ], 422);
-        }
-        $formData=$data->validated();
-        $formData['slug']=Str::slug($formData['name']);
-        Category::create($formData);
-
-        return response()->json([
-            'success'=>true,
-            'message'=>'Category successfully created',
-            'data'=>[],
-
-        ]);
-    }
+    return (new SuccessResource(['message' => 'Category successfully created']))->response()->setStatusCode(201);
+}
 
     /**
      * Display the specified resource.
      */
-    public function show($id)
-    {
-        $category=Category::find($id);
-
-       if(!$category){
-        return response()->json([
-            'success'=>false,
-            'message'=>'Category not found',
-            'errors'=>[],
-
-        ],400);
-       }
-       return response()->json([
-        'success'=>true,
-        'message'=>'Successfully',
-        'data'=>$category,
-
-      ]);
-    }
+    public function show(Category $category)
+{
+    return new SuccessResource([
+        'message' => 'Category details',
+        'data' => new CategoryResource($category),
+    ]);
+}
 
 
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(CategoryUpdateRequest $request, Category $category)
     {
-        $category = Category::find($id);
 
-        if (!$category) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Category not found',
-                'errors' => [],
-            ], 404);
-        }
 
-        $data = Validator::make($request->all(), [
-            'name' => 'required|string|unique:categories,name,' . $category->id,
-        ]);
 
-        // Check if validation fails
-        if ($data->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error',
-                'errors' => $data->errors(),
-            ], 422);
-        }
 
-        $formData = $data->validated();
+        $formData = $request->validated();
         $formData['slug'] = Str::slug($formData['name']);
 
         // Use the update method on the specific category instance
         $category->update($formData);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Category successfully updated',
-            'data' => $category, // Return the updated category data
-        ]);
+        return (new SuccessResource(['message' => 'Category successfully updated']))->response()->setStatusCode(200);
+
     }
 
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(Category $category)
     {
-        $category = Category::find($id);
 
-        if (!$category) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Category not found',
-                'errors' => [],
-            ], 404);
-        }
         $category->delete();
-        return response()->json([
-            'success' => true,
-            'message' => 'Category Deleted Successfully',
-            'data' => [],
-        ]);
+        return (new SuccessResource(['message' => 'Category successfully deleted']))->response()->setStatusCode(204);
+
     }
 }
